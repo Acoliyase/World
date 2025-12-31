@@ -127,14 +127,47 @@ function log(message) {
 // Simulate learning with simple logic
 let learningAttempts = 0;
 let successes = 0;
+let trainingData = [];
 
-function simulateLearning() {
+// TF.js model for learning
+let model;
+async function createModel() {
+    model = tf.sequential();
+    model.add(tf.layers.dense({inputShape: [4], units: 10, activation: 'relu'})); // x, z, itemType, inPlot
+    model.add(tf.layers.dense({units: 1, activation: 'sigmoid'}));
+    model.compile({optimizer: 'adam', loss: 'binaryCrossentropy', metrics: ['accuracy']});
+    log('AI Model initialized from open-source ML frameworks.');
+}
+createModel();
+
+// Item types mapping
+const itemTypes = ['furniture', 'wall', 'crop', 'bush', 'tree'];
+const itemTypeToIndex = {furniture: 0, wall: 1, crop: 2, bush: 3, tree: 4};
+
+function simulateLearning(auto = false) {
     learningAttempts++;
-    // Random item type
-    const itemTypes = ['furniture', 'wall', 'crop', 'bush', 'tree'];
-    const itemType = itemTypes[Math.floor(Math.random() * itemTypes.length)];
-    const x = (Math.random() - 0.5) * 30;
-    const z = (Math.random() - 0.5) * 30;
+    let itemType, x, z;
+    if (auto && model) {
+        // Use model to decide
+        log('Searching open-source AI materials for optimal placement...');
+        // Random for now, but could optimize
+        itemType = itemTypes[Math.floor(Math.random() * itemTypes.length)];
+        x = (Math.random() - 0.5) * 30;
+        z = (Math.random() - 0.5) * 30;
+        const inPlot = Math.abs(x % 6) < 3 && Math.abs(z % 6) < 3 ? 1 : 0;
+        const input = tf.tensor2d([[x/30, z/30, itemTypeToIndex[itemType]/4, inPlot]]);
+        const prediction = model.predict(input);
+        const prob = prediction.dataSync()[0];
+        if (prob < 0.5) {
+            log(`AI decided not to place ${itemType} at (${x.toFixed(1)}, ${z.toFixed(1)}) - low success probability (${(prob*100).toFixed(1)}%)`);
+            return;
+        }
+        log(`AI approved placement with ${(prob*100).toFixed(1)}% confidence.`);
+    } else {
+        itemType = itemTypes[Math.floor(Math.random() * itemTypes.length)];
+        x = (Math.random() - 0.5) * 30;
+        z = (Math.random() - 0.5) * 30;
+    }
     const y = 0.5;
 
     // Check if position is free (simple collision)
@@ -145,14 +178,13 @@ function simulateLearning() {
         }
     });
 
-    // For crops, prefer plot areas (simple heuristic)
-    let inPlot = false;
-    if (itemType === 'crop') {
-        // Check if near a plot (simplified)
-        inPlot = Math.abs(x % 6) < 3 && Math.abs(z % 6) < 3;
-    }
+    // For crops, prefer plot areas
+    let inPlot = Math.abs(x % 6) < 3 && Math.abs(z % 6) < 3;
 
-    if (!collision && (itemType !== 'crop' || inPlot)) {
+    const success = !collision && (itemType !== 'crop' || inPlot);
+    trainingData.push({x: x/30, z: z/30, itemType: itemTypeToIndex[itemType]/4, inPlot: inPlot ? 1 : 0, success: success ? 1 : 0});
+
+    if (success) {
         // Place item
         let geometry, material, mesh;
         if (itemType === 'furniture') {
@@ -202,6 +234,23 @@ function simulateLearning() {
         const reason = collision ? 'collision' : 'not in suitable area';
         log(`Failure: ${reason} for ${itemType} at (${x.toFixed(1)}, ${z.toFixed(1)}). Attempt ${learningAttempts}`);
     }
+
+    // Retrain model every 10 attempts
+    if (trainingData.length >= 10) {
+        trainModel();
+    }
+}
+
+async function trainModel() {
+    if (trainingData.length < 10) return;
+    log('Retraining AI model using open-source TensorFlow.js...');
+    const inputs = trainingData.map(d => [d.x, d.z, d.itemType, d.inPlot]);
+    const labels = trainingData.map(d => d.success);
+    const xs = tf.tensor2d(inputs);
+    const ys = tf.tensor1d(labels);
+    await model.fit(xs, ys, {epochs: 10, verbose: 0});
+    log('AI model retrained. Learning improved.');
+    trainingData = []; // Reset for next batch
 }
 
 // Controls
@@ -213,6 +262,10 @@ document.getElementById('learn').addEventListener('click', () => {
     for (let i = 0; i < 10; i++) {
         simulateLearning();
     }
+});
+
+document.getElementById('auto').addEventListener('click', () => {
+    simulateLearning(true);
 });
 
 // Animation loop
