@@ -114,8 +114,167 @@ const avatar = new THREE.Mesh(avatarGeometry, avatarMaterial);
 avatar.position.set(2, 0.5, 2);
 scene.add(avatar);
 
-// Load saved world
-loadWorld();
+// Additional NPCs (autonomous avatars)
+const npcs = [];
+for (let i = 0; i < 3; i++) {
+    const npcGeometry = new THREE.SphereGeometry(0.4);
+    const npcMaterial = toonMaterial.clone();
+    npcMaterial.color.set(Math.random() * 0xffffff);
+    const npc = new THREE.Mesh(npcGeometry, npcMaterial);
+    npc.position.set((Math.random() - 0.5) * 20, 0.5, (Math.random() - 0.5) * 20);
+    scene.add(npc);
+    npcs.push(npc);
+}
+
+// Time and day/night cycle
+let time = 0; // In seconds
+let dayLength = 120; // 2 minutes per day
+let isDay = true;
+
+// Update lighting based on time
+function updateLighting() {
+    const dayProgress = (time % dayLength) / dayLength;
+    const intensity = Math.sin(dayProgress * Math.PI) * 0.8 + 0.2; // Day brighter
+    directionalLight.intensity = intensity;
+    ambientLight.intensity = 0.3 + intensity * 0.3;
+    isDay = intensity > 0.5;
+    scene.background = new THREE.Color(isDay ? 0x87CEEB : 0x191970); // Sky blue to midnight blue
+
+    // Update time display
+    const days = Math.floor(time / dayLength) + 1;
+    const hours = Math.floor((dayProgress * 24));
+    const minutes = Math.floor((dayProgress * 24 * 60) % 60);
+    document.getElementById('time').textContent = `Time: Day ${days}, ${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
+}
+
+// Crop growth
+let crops = [];
+function growCrops() {
+    crops.forEach(crop => {
+        if (crop.scale.y < 1.5) {
+            crop.scale.y += 0.01; // Grow slowly
+        }
+    });
+}
+
+// Autonomous NPC actions
+function updateNPCs() {
+    npcs.forEach(npc => {
+        // Simple movement: wander
+        npc.position.x += (Math.random() - 0.5) * 0.1;
+        npc.position.z += (Math.random() - 0.5) * 0.1;
+        // Occasionally build
+        if (Math.random() < 0.01) { // 1% chance per frame
+            simulateLearning(true, npc.position);
+        }
+    });
+}
+
+// Modify simulateLearning to accept position
+function simulateLearning(auto = false, pos = null) {
+    learningAttempts++;
+    let itemType, x, z;
+    if (pos) {
+        itemType = itemTypes[Math.floor(Math.random() * itemTypes.length)];
+        x = pos.x + (Math.random() - 0.5) * 5;
+        z = pos.z + (Math.random() - 0.5) * 5;
+    } else if (auto && model) {
+        // Use model to decide
+        log('Searching open-source AI materials for optimal placement...');
+        itemType = itemTypes[Math.floor(Math.random() * itemTypes.length)];
+        x = (Math.random() - 0.5) * 30;
+        z = (Math.random() - 0.5) * 30;
+        const inPlot = Math.abs(x % 6) < 3 && Math.abs(z % 6) < 3 ? 1 : 0;
+        const input = tf.tensor2d([[x/30, z/30, itemTypeToIndex[itemType]/4, inPlot]]);
+        const prediction = model.predict(input);
+        const prob = prediction.dataSync()[0];
+        if (prob < 0.5) {
+            log(`AI decided not to place ${itemType} at (${x.toFixed(1)}, ${z.toFixed(1)}) - low success probability (${(prob*100).toFixed(1)}%)`);
+            return;
+        }
+        log(`AI approved placement with ${(prob*100).toFixed(1)}% confidence.`);
+    } else {
+        itemType = itemTypes[Math.floor(Math.random() * itemTypes.length)];
+        x = (Math.random() - 0.5) * 30;
+        z = (Math.random() - 0.5) * 30;
+    }
+    const y = 0.5;
+
+    // Check if position is free (simple collision)
+    let collision = false;
+    objects.forEach(obj => {
+        if (Math.abs(obj.position.x - x) < 1 && Math.abs(obj.position.z - z) < 1) {
+            collision = true;
+        }
+    });
+
+    // For crops, prefer plot areas
+    let inPlot = Math.abs(x % 6) < 3 && Math.abs(z % 6) < 3;
+
+    const success = !collision && (itemType !== 'crop' || inPlot);
+    trainingData.push({x: x/30, z: z/30, itemType: itemTypeToIndex[itemType]/4, inPlot: inPlot ? 1 : 0, success: success ? 1 : 0});
+
+    if (success) {
+        // Place item
+        let geometry, material, mesh;
+        if (itemType === 'furniture') {
+            geometry = new THREE.BoxGeometry(1, 1, 1);
+            material = toonMaterial.clone();
+            material.color.set(Math.random() * 0xffffff);
+        } else if (itemType === 'wall') {
+            geometry = new THREE.BoxGeometry(0.1, 2, 2);
+            material = toonMaterial.clone();
+            material.color.set(0x8B4513);
+        } else if (itemType === 'crop') {
+            geometry = new THREE.BoxGeometry(0.2, 0.5, 0.2);
+            material = toonMaterial.clone();
+            material.color.set(0xFFD700);
+        } else if (itemType === 'bush') {
+            geometry = new THREE.SphereGeometry(0.5);
+            material = toonMaterial.clone();
+            material.color.set(0x32CD32);
+        } else if (itemType === 'tree') {
+            // Simple tree
+            geometry = new THREE.CylinderGeometry(0.2, 0.2, 3);
+            material = new THREE.MeshLambertMaterial({ color: 0x8B4513 });
+            mesh = new THREE.Mesh(geometry, material);
+            mesh.position.set(x, y + 1.5, z);
+            scene.add(mesh);
+            objects.push(mesh);
+
+            const leavesGeom = new THREE.SphereGeometry(1.5);
+            const leavesMat = toonMaterial.clone();
+            leavesMat.color.set(0x228B22);
+            const leaves = new THREE.Mesh(leavesGeom, leavesMat);
+            leaves.position.set(x, y + 3, z);
+            scene.add(leaves);
+            objects.push(leaves);
+            successes++;
+            log(`Success: Placed tree at (${x.toFixed(1)}, ${z.toFixed(1)}). Success rate: ${(successes / learningAttempts * 100).toFixed(1)}%`);
+            return;
+        }
+        mesh = new THREE.Mesh(geometry, material);
+        mesh.position.set(x, y, z);
+        mesh.userData = { type: itemType, color: material.color.getHex() };
+        scene.add(mesh);
+        objects.push(mesh);
+        if (itemType === 'crop') {
+            crops.push(mesh);
+        }
+        successes++;
+        const extra = itemType === 'crop' && inPlot ? ' (in plot)' : '';
+        log(`Success: Placed ${itemType} at (${x.toFixed(1)}, ${z.toFixed(1)})${extra}. Success rate: ${(successes / learningAttempts * 100).toFixed(1)}%`);
+        saveWorld();
+    } else {
+        const reason = collision ? 'collision' : 'not in suitable area';
+        log(`Failure: ${reason} for ${itemType} at (${x.toFixed(1)}, ${z.toFixed(1)}). Attempt ${learningAttempts}`);
+    }
+
+    // Retrain model every 10 attempts
+    if (trainingData.length >= 10) {
+        trainModel();
+    }
+}
 
 // Load world state from localStorage
 function loadWorld() {
@@ -370,6 +529,10 @@ document.getElementById('reset').addEventListener('click', () => {
 // Animation loop
 function animate() {
     requestAnimationFrame(animate);
+    time += 0.016; // Assuming 60fps, ~1 second per 60 frames
+    updateLighting();
+    growCrops();
+    updateNPCs();
     renderer.render(scene, camera);
 }
 animate();

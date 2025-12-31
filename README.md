@@ -1,16 +1,17 @@
 # World Builder Simulation
 
-A browser-based 3D simulation inspired by Sword Art Online’s Underworld, where an autonomous avatar constructs and evolves a world. The avatar learns building techniques through trial and error, using open-source AI/ML approaches like TensorFlow.js to simulate computational learning. The learning process is visible through logs, and the world persists across sessions.
+A browser-based 3D simulation inspired by Sword Art Online’s Underworld, where autonomous avatars construct and evolve a living world. Inspired by Fluctlights and self-learning AIs, characters learn building techniques through trial and error, using open-source AI/ML approaches like TensorFlow.js. The world evolves with time, featuring day/night cycles, growing crops, wandering NPCs, and persistent societies.
 
 ## Features
 
-- **Autonomous Avatar**: Builds independently, learning from successes and failures.
-- **Persistent World**: Saves progress to browser storage; world evolves over time.
-- **AI Learning**: Uses TensorFlow.js for decision-making; retrains on data.
-- **Anime-Inspired Style**: Ethereal visuals with toon materials.
-- **Object-Based Building**: Places houses, furniture, crops, walls, bushes, trees.
-- **Organized Farming**: Crop plots with terrain elevation.
-- **Logging System**: Detailed logs of attempts, AI research, and improvements.
+- **Autonomous Avatars & NPCs**: Main avatar and 3 NPCs build, learn, and wander independently.
+- **Persistent, Evolving World**: Saves to browser storage; world grows over time with time progression.
+- **AI Learning**: TensorFlow.js model improves placement decisions; logs show research and evolution.
+- **Time & Environment**: Day/night cycle, growing crops, dynamic lighting.
+- **Anime-Inspired Style**: Ethereal visuals with toon materials, like SAO's Underworld.
+- **Object-Based Building**: Houses, furniture, crops, walls, bushes, trees.
+- **Organized Farming**: Crop plots with elevation; crops grow over time.
+- **Logging System**: Detailed logs of AI learning, successes, failures, and world events.
 - **Lightweight**: Runs smoothly in-browser, deployable on GitHub Pages.
 
 ## How to Run Locally
@@ -25,6 +26,13 @@ A browser-based 3D simulation inspired by Sword Art Online’s Underworld, where
 - **Auto Build with AI**: AI-guided placement.
 - **Toggle Autonomous Mode**: Continuous building every 2 seconds.
 - **Reset World**: Clears all progress.
+
+## World Evolution (SAO-Inspired)
+
+- **Time Progression**: Days pass with lighting changes; crops grow autonomously.
+- **NPC Activities**: Wander and occasionally build, simulating a living society.
+- **Learning Adaptation**: AIs improve like Fluctlights, adapting to build better structures.
+- **Expansion Potential**: Foundation for villages, interactions, and complex behaviors.
 
 ## Deployment to GitHub Pages
 
