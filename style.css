@@ -1,0 +1,54 @@
+body {
+    margin: 0;
+    font-family: 'Arial', sans-serif;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    overflow: hidden;
+}
+
+#container {
+    display: flex;
+    height: 100vh;
+}
+
+#ui {
+    width: 300px;
+    padding: 20px;
+    background: rgba(0, 0, 0, 0.5);
+    box-shadow: 0 0 10px rgba(255, 255, 255, 0.1);
+    border-radius: 10px;
+    margin: 10px;
+}
+
+#scene {
+    flex: 1;
+    position: relative;
+}
+
+#logs {
+    height: 60%;
+    overflow-y: auto;
+    background: rgba(255, 255, 255, 0.1);
+    padding: 10px;
+    border-radius: 5px;
+    margin-bottom: 20px;
+}
+
+#log-content {
+    font-size: 12px;
+}
+
+#controls button {
+    background: #4CAF50;
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    margin: 5px;
+    border-radius: 5px;
+    cursor: pointer;
+    transition: background 0.3s;
+}
+
+#controls button:hover {
+    background: #45a049;
+}
