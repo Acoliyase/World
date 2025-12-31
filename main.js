@@ -114,8 +114,78 @@ const avatar = new THREE.Mesh(avatarGeometry, avatarMaterial);
 avatar.position.set(2, 0.5, 2);
 scene.add(avatar);
 
-// Basic objects array
-let objects = [];
+// Load saved world
+loadWorld();
+
+// Load world state from localStorage
+function loadWorld() {
+    const saved = localStorage.getItem('worldState');
+    if (saved) {
+        const state = JSON.parse(saved);
+        state.objects.forEach(obj => {
+            // Recreate meshes
+            let geometry, material, mesh;
+            if (obj.type === 'furniture') {
+                geometry = new THREE.BoxGeometry(1, 1, 1);
+                material = toonMaterial.clone();
+                material.color.set(obj.color);
+            } else if (obj.type === 'wall') {
+                geometry = new THREE.BoxGeometry(0.1, 2, 2);
+                material = toonMaterial.clone();
+                material.color.set(obj.color);
+            } else if (obj.type === 'crop') {
+                geometry = new THREE.BoxGeometry(0.2, 0.5, 0.2);
+                material = toonMaterial.clone();
+                material.color.set(obj.color);
+            } else if (obj.type === 'bush') {
+                geometry = new THREE.SphereGeometry(0.5);
+                material = toonMaterial.clone();
+                material.color.set(obj.color);
+            } else if (obj.type === 'tree') {
+                // Trunk
+                geometry = new THREE.CylinderGeometry(0.2, 0.2, 3);
+                material = new THREE.MeshLambertMaterial({ color: 0x8B4513 });
+                mesh = new THREE.Mesh(geometry, material);
+                mesh.position.set(obj.x, obj.y + 1.5, obj.z);
+                scene.add(mesh);
+                objects.push(mesh);
+                // Leaves
+                const leavesGeom = new THREE.SphereGeometry(1.5);
+                const leavesMat = toonMaterial.clone();
+                leavesMat.color.set(obj.color);
+                const leaves = new THREE.Mesh(leavesGeom, leavesMat);
+                leaves.position.set(obj.x, obj.y + 3, obj.z);
+                scene.add(leaves);
+                objects.push(leaves);
+                return;
+            }
+            if (mesh) {
+                mesh.position.set(obj.x, obj.y, obj.z);
+                scene.add(mesh);
+                objects.push(mesh);
+            }
+        });
+        learningAttempts = state.learningAttempts;
+        successes = state.successes;
+        log('World state loaded from persistent storage.');
+    }
+}
+
+// Save world state to localStorage
+function saveWorld() {
+    const state = {
+        objects: objects.map(obj => ({
+            x: obj.position.x,
+            y: obj.position.y,
+            z: obj.position.z,
+            type: obj.userData.type,
+            color: obj.material.color.getHex()
+        })),
+        learningAttempts,
+        successes
+    };
+    localStorage.setItem('worldState', JSON.stringify(state));
+}
 
 // Learning logs
 const logContent = document.getElementById('log-content');
@@ -225,11 +295,13 @@ function simulateLearning(auto = false) {
         }
         mesh = new THREE.Mesh(geometry, material);
         mesh.position.set(x, y, z);
+        mesh.userData = { type: itemType, color: material.color.getHex() };
         scene.add(mesh);
         objects.push(mesh);
         successes++;
         const extra = itemType === 'crop' && inPlot ? ' (in plot)' : '';
         log(`Success: Placed ${itemType} at (${x.toFixed(1)}, ${z.toFixed(1)})${extra}. Success rate: ${(successes / learningAttempts * 100).toFixed(1)}%`);
+        saveWorld();
     } else {
         const reason = collision ? 'collision' : 'not in suitable area';
         log(`Failure: ${reason} for ${itemType} at (${x.toFixed(1)}, ${z.toFixed(1)}). Attempt ${learningAttempts}`);
@@ -266,6 +338,33 @@ document.getElementById('learn').addEventListener('click', () => {
 
 document.getElementById('auto').addEventListener('click', () => {
     simulateLearning(true);
+});
+
+document.getElementById('autonomous').addEventListener('click', () => {
+    autonomousMode = !autonomousMode;
+    if (autonomousMode) {
+        autonomousInterval = setInterval(() => {
+            simulateLearning(true);
+        }, 2000); // Build every 2 seconds
+        document.getElementById('autonomous').textContent = 'Stop Autonomous Mode';
+        log('Autonomous mode activated. Avatar will build independently.');
+    } else {
+        clearInterval(autonomousInterval);
+        document.getElementById('autonomous').textContent = 'Toggle Autonomous Mode';
+        log('Autonomous mode deactivated.');
+    }
+});
+
+document.getElementById('reset').addEventListener('click', () => {
+    // Clear objects
+    objects.forEach(obj => scene.remove(obj));
+    objects = [];
+    learningAttempts = 0;
+    successes = 0;
+    trainingData = [];
+    localStorage.removeItem('worldState');
+    log('World reset. Starting fresh.');
+    // Recreate initial environment if needed, but for now, just clear
 });
 
 // Animation loop
